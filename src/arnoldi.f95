@@ -1,115 +1,55 @@
 module arnoldi
     implicit none
+    real(8) :: tol = 1.0E-12_8
+    integer :: i, j
 
     interface arnoldi_iteration
-        module procedure iteration_real64, iteration_real128, iteration_complex128, iteration_complex256
+        module procedure iteration_real64, iteration_complex128
     end interface
 
     private
     public :: arnoldi_iteration
 
     contains
-        subroutine iteration_real64(m, n, A, b, Q, H)
+        subroutine iteration_real64(m, n, A, b, Q, H_hat, k)
             implicit none
             integer, intent(in) :: m, n
-            real(8), intent(in) :: A(m, m), b(m)
-            real(8), intent(out) :: Q(m, n), H(n, n - 1)
-            real(8) :: tol = 1.0E-12_8
-            integer :: i, j
-
-            Q(:, 1) = b / sqrt(sum(b**2))
+            real(8), intent(in) :: A(m,m), b(m)
+            real(8), intent(out) :: Q(m,n), H_hat(n,n-1)
+            integer, intent(out) :: k
+            Q(:,1) = b / sqrt(sum(b**2))
             do i = 2, n
-                Q(:, i) = matmul(A, Q(:, i - 1))
-                do j = 1, i - 1
-                    H(j, i - 1) = dot_product(Q(:, j), Q(:, i))
-                    Q(:, i) = Q(:, i) - H(j, i - 1) * Q(:, j)
+                Q(:,i) = matmul(A, Q(:,i-1)) ! A^(i-1)b
+                do j = 1, i - 1 ! Orthogonalization
+                    H_hat(j,i-1) = dot_product(Q(:, j), Q(:,i))
+                    Q(:,i) = Q(:,i) - H_hat(j,i-1) * Q(:, j)
                 end do
-                H(i, i - 1) = sqrt(sum(Q(:, i)**2))
-                H(i + 1 :, i - 1) = 0.0_8
-                if (H(i, i - 1) >= tol) then
-                    Q(:, i) = Q(:, i) / H(i, i - 1)
-                else
-                    print *, "ARNOLDI: EARLY STOPPING AT ITERATION", i
-                    exit
-                end if
+                H_hat(i,i-1) = sqrt(sum(Q(:,i)**2))
+                H_hat(i+1:,i-1) = 0.0_8     
+                if (H_hat(i,i-1) < tol) exit ! stop if q_i is not linearly independent
+                Q(:,i) = Q(:,i) / H_hat(i,i-1)
             end do
+            k = i - 1
         end subroutine
 
-        subroutine iteration_real128(m, n, A, b, Q, H)
+        subroutine iteration_complex128(m, n, A, b, Q, H_hat, k)
             implicit none
             integer, intent(in) :: m, n
-            real(16), intent(in) :: A(m, m), b(m)
-            real(16), intent(out) :: Q(m, n),H(n, n - 1)
-            real(16) :: tol = 1.0E-24_16
-            integer :: i, j
-
-            Q(:, 1) = b / sqrt(sum(b**2))
+            complex(8), intent(in) :: A(m,m), b(m)
+            complex(8), intent(out) :: Q(m,n), H_hat(n,n-1)
+            integer, intent(out) :: k
+            Q(:,1) = b / sqrt(sum(conjg(b) * b))
             do i = 2, n
-                Q(:, i) = matmul(A, Q(:, i - 1))
-                do j = 1, i - 1
-                    H(j, i - 1) = dot_product(Q(:, j), Q(:, i))
-                    Q(:, i) = Q(:, i) - H(j, i - 1) * Q(:, j)
+                Q(:,i) = matmul(A, Q(:,i-1)) ! A^(i-1)b
+                do j = 1, i - 1 ! Orthogonalization
+                    H_hat(j,i-1) = dot_product(conjg(Q(:,j)), Q(:,i))
+                    Q(:,i) = Q(:,i) - H_hat(j,i-1) * Q(:,j)
                 end do
-                H(i, i - 1) = sqrt(sum(Q(:, i)**2))
-                H(i + 1 :, i - 1) = 0.0_16
-                if (H(i, i - 1) >= tol) then
-                    Q(:, i) = Q(:, i) / H(i, i - 1)
-                else
-                    print *, "ARNOLDI: EARLY STOPPING AT ITERATION", i
-                    exit
-                end if
+                H_hat(i,i-1) = sqrt(sum(conjg(Q(:,i)) * Q(:,i)))
+                H_hat(i+1:,i-1) = 0.0_8
+                if (real(H_hat(i,i-1), 8) < tol) exit ! stop if q_i is not linearly independent
+                Q(:,i) = Q(:,i) / H_hat(i,i-1)
             end do
-        end subroutine
-
-        subroutine iteration_complex128(m, n, A, b, Q, H)
-            implicit none
-            integer, intent(in) :: m, n
-            complex(8), intent(in) :: A(m, m), b(m)
-            complex(8), intent(out) :: Q(m, n), H(n, n - 1)
-            real(8) :: tol = 1.0E-12_8
-            integer :: i, j
-
-            Q(:, 1) = b / sqrt(sum(conjg(b) * b))
-            do i = 2, n
-                Q(:, i) = matmul(A, Q(:, i - 1))
-                do j = 1, i - 1
-                    H(j, i - 1) = dot_product(conjg(Q(:, j)), Q(:, i))
-                    Q(:, i) = Q(:, i) - H(j, i - 1) * Q(:, j)
-                end do
-                H(i, i - 1) = sqrt(sum(conjg(Q(:, i)) * Q(:, i)))
-                H(i + 1 :, i - 1) = 0.0_16
-                if (real(H(i, i - 1), 16) >= tol) then
-                    Q(:, i) = Q(:, i) / H(i, i - 1)
-                else
-                    print *, "ARNOLDI: EARLY STOPPING AT ITERATION", i
-                    exit
-                end if
-            end do
-        end subroutine
-
-        subroutine iteration_complex256(m, n, A, b, Q, H)
-            implicit none
-            integer, intent(in) :: m, n
-            complex(16), intent(in) :: A(m, m), b(m)
-            complex(16), intent(out) :: Q(m, n), H(n, n - 1)
-            real(16) :: tol = 1.0E-24_16
-            integer :: i, j
-
-            Q(:, 1) = b / sqrt(sum(conjg(b) * b))
-            do i = 2, n
-                Q(:, i) = matmul(A, Q(:, i - 1))
-                do j = 1, i - 1
-                    H(j, i - 1) = dot_product(conjg(Q(:, j)), Q(:, i))
-                    Q(:, i) = Q(:, i) - H(j, i - 1) * Q(:, j)
-                end do
-                H(i, i - 1) = sqrt(sum(conjg(Q(:, i)) * Q(:, i)))
-                H(i + 1 :, i - 1) = 0.0_16
-                if (real(H(i, i - 1), 16) >= tol) then
-                    Q(:, i) = Q(:, i) / H(i, i - 1)
-                else
-                    print *, "ARNOLDI: EARLY STOPPING AT ITERATION", i
-                    exit
-                end if
-            end do
+            k = i - 1
         end subroutine
 end module
