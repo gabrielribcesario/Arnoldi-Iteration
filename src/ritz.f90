@@ -3,12 +3,12 @@ program ritz
     use francis
     implicit none
 
-    ! gfortran arnoldi.f95 francis.f95 ritz.f95 -o ritz -O2
+    ! gfortran arnoldi.f90 francis.f90 ritz.f90 -o ritz -O2
 
     ! Format specifiers: https://pages.mtu.edu/~shene/courses/cs201/notes/chap05/format.html
     character(20), parameter :: format_specifier = '(*(ES20.12, :, ","))'
-    integer, parameter :: m = 200 ! rank(A)
-    integer, parameter :: n = 200 ! Dimension of the Krylov subspace
+    integer, parameter :: m = 20 ! rank(A)
+    integer, parameter :: n = 20 ! Dimension of the Krylov subspace
     integer, allocatable :: seed(:)
     integer :: i, seed_size = 12
     integer :: file1 = 20, file2 = 21, file3 = 22, file4 = 23, file5 = 24
@@ -30,7 +30,9 @@ program ritz
     ! Initialize matrix and vector to random values
     open(file1, file="../data/A.dat", status="replace", action="write")
     open(file2, file="../data/b.dat", status="replace", action="write")
-    call random_number(b(:)) ! range [0.0, 1.0]
+    ! call random_number(b(:)) ! range [0.0, 1.0]
+    b = 0.0_8
+    b(1) = 1.0_8
     do i = 1, m
         call random_number(A(i,:))
         A(i,:) = A(i,:) - 0.5_8 ! range [-0.5, 0.5]
