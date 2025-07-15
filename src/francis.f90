@@ -9,44 +9,42 @@ module francis
     public :: francis_algorithm
 
     contains
-        subroutine francis_real64(m, A)
+        recursive subroutine francis_real64(m, A, evals)
             implicit none
             integer, intent(in) :: m
+            complex(8), intent(out) :: evals(m)
             real(8), intent(inout) :: A(m,m) ! Upper Hessenberg matrix
-            integer :: idx
-            do while(.true.)
-                ! Deflate if needed
-                idx = check_subdiagonal(m, A)
-                if (idx <= 2) then; call solve_eig ! 1 x 1 or 2 x 2 block
-                else if(idx > 2 .and. idx < m) then; call deflate(m, idx, A) ! n x n and m-n x m-n blocks
-                end if
-                ! Create bulge
-                call bulge(m, A)
-                ! Chase the bulge at the i-th column
-                call chase(m, A)
-            end do
+            integer :: idx ! Deflation diagonal index
+            if (m > 2) then
+                do while(.true.) ! replace infinite loop later
+                    ! print *, A(m-1,m-5:)
+                    ! print *, A(m,m-5:)
+                    ! print *, ""
+                    idx = check_subdiagonal(m, A)
+                    if (idx == m) then ! Check if A(n,n) has converged
+                        evals(m) = complex(A(m,m), 0.0_8);
+                        call francis_real64(m-1, A(:m-1,:m-1), evals(:m-1))
+                        exit
+                    else if (idx == m - 1) then ! Check if A(n-1:,n-1:) has converged
+                        evals(m-1:) = solve_quadratic(A(m-1:,m-1:))
+                        call francis_real64(m-2, A(:m-2,:m-2), evals(:m-2))
+                        exit
+                    else if(idx > 2 .and. idx < m - 1) then ! Split blocks larger than 2x2
+                        call francis_real64(idx-1, A(:idx-1,:idx-1), evals(:idx-1)) ! Solve upper left
+                        call francis_real64(m-idx+1, A(idx:,idx:), evals(idx:)) ! Solve lower right
+                        exit
+                    else
+                        ! Create the bulge
+                        call bulge(m, A)
+                        ! Chase the bulge at the i-th column
+                        call chase(m, A)
+                    end if
+                end do
+            else if (m == 1) then; evals(1) = complex(A(m,m), 0.0_8);
+            else if (m == 2) then; evals(1:2) = solve_quadratic(A(:2,:2))
+            end if
+            ! print *, evals!size(evals)
         end subroutine
-
-        integer pure function check_subdiagonal(m, A)
-            implicit none
-            integer, intent(in) :: m
-            real(8), intent(in) :: A(:,:)
-            integer :: i
-            do i = i, m
-                if (abs(A(i+1,i)) < epsilon(1.0_8) * (abs(A(i,i)) + abs(A(i+1,i+1)))) exit
-            end do
-            check_subdiagonal = i
-        end function
-
-        pure function solve_quadratic(A)
-            real(8), intent(in) :: A(2,2)
-            complex(8), dimension(2) :: solve_quadratic
-            real(8) :: b, c
-            b = -(A(1,1) + A(2,2))
-            c = A(1,1) * A(2,2) - A(2,1) * A(1,2)
-            solve_quadratic = [ (-b - sqrt(complex(b**2 - 4.0_8 * c, 0.0_8))) * 0.5_8,&
-                                (-b + sqrt(complex(b**2 - 4.0_8 * c, 0.0_8))) * 0.5_8 ]
-        end function
 
         subroutine bulge(m, A) 
             implicit none
@@ -102,6 +100,28 @@ module francis
             A(m-1:,:) = matmul(P(:2,:2), A(m-1:,:))
             A(:,m-1:) = matmul(A(:,m-1:), P(:2,:2))
         end subroutine
+
+        pure function check_subdiagonal(m, A)
+            implicit none
+            integer, intent(in) :: m
+            real(8), intent(in) :: A(:,:)
+            integer :: i, check_subdiagonal
+            do i = m - 1, 1, -1
+                if (abs(A(i+1,i)) < epsilon(1.0_8) * (abs(A(i,i)) + abs(A(i+1,i+1)))) exit
+            end do
+            check_subdiagonal = i + 1
+        end function
+
+        pure function solve_quadratic(A)
+            implicit none
+            real(8), intent(in) :: A(2,2)
+            complex(8), dimension(2) :: solve_quadratic
+            real(8) :: b, c
+            b = -(A(1,1) + A(2,2))
+            c = A(1,1) * A(2,2) - A(2,1) * A(1,2)
+            solve_quadratic = [ (-b - sqrt(complex(b**2 - 4.0_8 * c, 0.0_8))) * 0.5_8,&
+                                (-b + sqrt(complex(b**2 - 4.0_8 * c, 0.0_8))) * 0.5_8 ]
+        end function
 
         ! subroutine francis_complex128()
         ! end subroutine
