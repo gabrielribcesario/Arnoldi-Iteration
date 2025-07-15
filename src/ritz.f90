@@ -7,8 +7,8 @@ program ritz
 
     ! Format specifiers: https://pages.mtu.edu/~shene/courses/cs201/notes/chap05/format.html
     character(20), parameter :: format_specifier = '(*(ES20.12, :, ","))'
-    integer, parameter :: m = 20 ! rank(A)
-    integer, parameter :: n = 20 ! Dimension of the Krylov subspace
+    integer, parameter :: m = 1000 ! rank(A)
+    integer, parameter :: n = 1000 ! Dimension of the Krylov subspace
     integer, allocatable :: seed(:)
     integer :: i, seed_size = 12
     integer :: file1 = 20, file2 = 21, file3 = 22, file4 = 23, file5 = 24
@@ -17,6 +17,7 @@ program ritz
     real(8) :: Q(m,n) ! Orthonormal basis
     real(8) :: H_hat(n,n-1) ! Hessenberg reduction output
     real(8), allocatable :: H(:,:) ! Upper hessenberg matrix
+    complex(8), allocatable :: evals(:)
     integer :: erank ! # of Arnoldi iterations ran (i.e. dim of eigenspace)
 
     ! Random seed initialization
@@ -58,17 +59,18 @@ program ritz
     close(file4)
 
     allocate(H(erank,erank))
+    allocate(evals(erank))
 
     H = H_hat(:erank,:erank)
-    call francis_algorithm(m, H)
+    evals = 0.0_8
+    call francis_algorithm(erank, H, evals)
 
-    open(file5, file="../data/A_hat.dat", status="replace", action="write")
-    do i = 1, erank
-        write(file5, format_specifier) H(i,:)
-    end do
+    open(file5, file="../data/evals.dat", status="replace", action="write")
+    write(file5, '(SP,G0.12,",",G0.12)') evals
     close(file5)
     
     deallocate(H)
+    deallocate(evals)
 
     print *, "Done."
 end program
