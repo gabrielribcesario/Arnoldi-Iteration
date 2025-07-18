@@ -17,15 +17,15 @@ module arnoldi
             real(8), intent(in) :: A(m,m), b(m)
             real(8), intent(out) :: Q(m,n), H_hat(n,n-1)
             integer, intent(out) :: k
-            Q(:,1) = b / sqrt(sum(b**2))
+            Q(:,1) = b / norm2(b)
             do i = 2, n
                 Q(:,i) = matmul(A, Q(:,i-1)) ! A^(i-1)b
                 do j = 1, i - 1 ! Orthogonalization
                     H_hat(j,i-1) = dot_product(Q(:, j), Q(:,i))
                     Q(:,i) = Q(:,i) - H_hat(j,i-1) * Q(:, j)
                 end do
-                H_hat(i,i-1) = sqrt(sum(Q(:,i)**2))
-                H_hat(i+1:,i-1) = 0.0_8     
+                H_hat(i,i-1) = norm2(Q(:,i))
+                H_hat(i+1:,i-1) = 0.0d0     
                 if (H_hat(i,i-1) < tol) exit ! stop if q_i is not linearly independent
                 Q(:,i) = Q(:,i) / H_hat(i,i-1)
             end do
@@ -42,11 +42,11 @@ module arnoldi
             do i = 2, n
                 Q(:,i) = matmul(A, Q(:,i-1)) ! A^(i-1)b
                 do j = 1, i - 1 ! Orthogonalization
-                    H_hat(j,i-1) = dot_product(conjg(Q(:,j)), Q(:,i))
+                    H_hat(j,i-1) = dot_product(Q(:,j), Q(:,i))
                     Q(:,i) = Q(:,i) - H_hat(j,i-1) * Q(:,j)
                 end do
                 H_hat(i,i-1) = sqrt(sum(conjg(Q(:,i)) * Q(:,i)))
-                H_hat(i+1:,i-1) = 0.0_8
+                H_hat(i+1:,i-1) = 0.0d0
                 if (real(H_hat(i,i-1), 8) < tol) exit ! stop if q_i is not linearly independent
                 Q(:,i) = Q(:,i) / H_hat(i,i-1)
             end do
