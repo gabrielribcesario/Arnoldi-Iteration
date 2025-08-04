@@ -1,7 +1,15 @@
 module arnoldi
+    use, intrinsic :: iso_fortran_env, dp=>real64
     implicit none
-    real(8) :: tol = 1.0E-12_8
-    integer :: i, j
+    real(dp), parameter :: tol = 1.E-12_dp
+
+    ! m - rank(A)
+    ! n - dim[K_n(A,b)]
+    ! A, b - Input matrix and vector
+    ! Q_hat - Extended orthonormal basis or Q_{n+1}
+    ! H_hat - Extended Hessenberg matrix or H_{n}
+    !
+    ! Such that: A.Q_{n} = Q_{n+1}.H_{n}
 
     interface arnoldi_iteration
         module procedure iteration_real64, iteration_complex128
@@ -11,45 +19,49 @@ module arnoldi
     public :: arnoldi_iteration
 
     contains
-        subroutine iteration_real64(m, n, A, b, Q, H_hat, k)
+        subroutine iteration_real64(m, n, A, b, Q_hat, H_hat)
             implicit none
             integer, intent(in) :: m, n
-            real(8), intent(in) :: A(m,m), b(m)
-            real(8), intent(out) :: Q(m,n), H_hat(n,n-1)
-            integer, intent(out) :: k
-            Q(:,1) = b / norm2(b)
-            do i = 2, n
-                Q(:,i) = matmul(A, Q(:,i-1)) ! A^(i-1)b
-                do j = 1, i - 1 ! Orthogonalization
-                    H_hat(j,i-1) = dot_product(Q(:, j), Q(:,i))
-                    Q(:,i) = Q(:,i) - H_hat(j,i-1) * Q(:, j)
+            real(dp), intent(in) :: A(m,m), b(m)
+            real(dp), intent(out) :: Q_hat(m,n+1), H_hat(n+1,n)
+            integer :: i, j
+            Q_hat(:,1) = b / norm2(b)
+            do i = 1, n
+                Q_hat(:,i+1) = matmul(A, Q_hat(:,i)) ! A^(i)b
+                do j = 1, i ! Orthogonalization
+                    H_hat(j,i) = dot_product(Q_hat(:, j), Q_hat(:,i+1))
+                    Q_hat(:,i+1) = Q_hat(:,i+1) - H_hat(j,i) * Q_hat(:, j)
                 end do
-                H_hat(i,i-1) = norm2(Q(:,i))
-                H_hat(i+1:,i-1) = 0.0d0     
-                if (H_hat(i,i-1) < tol) exit ! stop if q_i is not linearly independent
-                Q(:,i) = Q(:,i) / H_hat(i,i-1)
+                ! h_(i+1)i = ||q_(i+1)||
+                H_hat(i+1,i) = norm2(Q_hat(:,i+1))
+                H_hat(i+2:,i) = 0._dp     
+                ! Early breakdown: q_i is the zero vector
+                if (H_hat(i+1,i) < tol) exit 
+                ! Normalization
+                Q_hat(:,i+1) = Q_hat(:,i+1) / H_hat(i+1,i)
             end do
-            k = i - 1
         end subroutine
 
-        subroutine iteration_complex128(m, n, A, b, Q, H_hat, k)
+        subroutine iteration_complex128(m, n, A, b, Q_hat, H_hat)
             implicit none
             integer, intent(in) :: m, n
-            complex(8), intent(in) :: A(m,m), b(m)
-            complex(8), intent(out) :: Q(m,n), H_hat(n,n-1)
-            integer, intent(out) :: k
-            Q(:,1) = b / sqrt(sum(conjg(b) * b))
-            do i = 2, n
-                Q(:,i) = matmul(A, Q(:,i-1)) ! A^(i-1)b
-                do j = 1, i - 1 ! Orthogonalization
-                    H_hat(j,i-1) = dot_product(Q(:,j), Q(:,i))
-                    Q(:,i) = Q(:,i) - H_hat(j,i-1) * Q(:,j)
+            complex(dp), intent(in) :: A(m,m), b(m)
+            complex(dp), intent(out) :: Q_hat(m,n+1), H_hat(n+1,n)
+            integer :: i, j
+            Q_hat(:,1) = b / sqrt(sum(conjg(b) * b))
+            do i = i, n
+                Q_hat(:,i+1) = matmul(A, Q_hat(:,i)) ! A^(i)b
+                do j = 1, i ! Orthogonalization
+                    H_hat(j,i) = dot_product(Q_hat(:,j), Q_hat(:,i+1))
+                    Q_hat(:,i+1) = Q_hat(:,i+1) - H_hat(j,i) * Q_hat(:,j)
                 end do
-                H_hat(i,i-1) = sqrt(sum(conjg(Q(:,i)) * Q(:,i)))
-                H_hat(i+1:,i-1) = 0.0d0
-                if (real(H_hat(i,i-1), 8) < tol) exit ! stop if q_i is not linearly independent
-                Q(:,i) = Q(:,i) / H_hat(i,i-1)
+                ! h_(i+1)i = ||q_(i+1)||
+                H_hat(i+1,i) = sqrt(sum(conjg(Q_hat(:,i+1)) * Q_hat(:,i+1)))
+                H_hat(i+2:,i) = 0._dp
+                ! Early breakdown: q_i is the zero vector
+                if (real(H_hat(i+1,i), dp) < tol) exit 
+                ! Normalization
+                Q_hat(:,i+1) = Q_hat(:,i+1) / H_hat(i+1,i)
             end do
-            k = i - 1
         end subroutine
 end module
