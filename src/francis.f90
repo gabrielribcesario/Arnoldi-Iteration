@@ -4,23 +4,18 @@ module francis
     real(dp), parameter :: eps = epsilon(1._dp)
     integer, parameter :: maxiter = 20 ! # of iter for exceptional shift
 
-    interface francis_algorithm
-        module procedure francis_real64!, francis_complex128
-    end INTERFACE
-
     private
     public :: francis_algorithm
 
     contains
-    recursive subroutine francis_real64(A, evals)
+    recursive subroutine francis_algorithm(A, evals)
         implicit none
         real(dp), intent(inout) :: A(:,:) ! Upper Hessenberg matrix
         complex(dp), intent(out) :: evals(:) ! Output eigenvalues
         real(dp) :: trA, detA
-        integer :: m, i, idx, x1, y1
+        integer :: i, idx, x1, y1
         logical :: stagnant
-        m = size(A,1)
-        i = 0; x1 = 1; y1 = m
+        i = 0; x1 = 1; y1 = size(A,1)
         do while(y1-x1 > 1)
             ! Check subdiagonal
             do idx = y1-1, x1, -1
@@ -29,14 +24,13 @@ module francis
             ! Bulge chasing, disturb the matrix if stagnant
             if (idx < x1) then
                 stagnant = i == maxiter
-                call bulge(A(x1:y1,x1:y1), stagnant); 
-                call chase(A(x1:y1,x1:y1))
+                call bulge_chase(A(x1:y1,x1:y1), stagnant);
                 if (stagnant) then; i = 0
-                else; i = i + 1; 
+                else; i = i + 1
                 end if
             ! Check convergence of trailing 1x1
             else if (idx == y1-1) then 
-                evals(y1) = complex(A(y1,y1), 0._dp);
+                evals(y1) = complex(A(y1,y1), 0._dp)
                 y1 = y1 - 1
             ! Check convergence of trailing 2x2
             else if (idx == y1-2) then 
@@ -47,7 +41,7 @@ module francis
                 y1 = y1 - 2
             ! Check convergence of leading 1x1
             else if (idx == x1) then
-                evals(x1) = complex(A(x1,x1), 0._dp);
+                evals(x1) = complex(A(x1,x1), 0._dp)
                 x1 = x1 + 1
             ! Check convergence of leading 2x2
             else if (idx == x1+1) then
@@ -58,8 +52,8 @@ module francis
                 x1 = x1 + 2
             ! Solve blocks separately
             else
-                call francis_real64(A(x1:idx,x1:idx), evals(x1:idx)) 
-                call francis_real64(A(idx+1:y1,idx+1:y1), evals(idx+1:y1))
+                call francis_algorithm(A(x1:idx,x1:idx), evals(x1:idx)) 
+                call francis_algorithm(A(idx+1:y1,idx+1:y1), evals(idx+1:y1))
                 return
             end if
         end do
@@ -74,7 +68,7 @@ module francis
     end subroutine
 
     ! Create the bulge
-    subroutine bulge(A, lead) 
+    subroutine bulge_chase(A, lead) 
         implicit none
         logical, intent(in) :: lead ! Use leading 2x2 for shifts if true
         real(dp), intent(inout) :: A(:,:)
@@ -82,7 +76,7 @@ module francis
         real(dp) :: vnorm ! ||v||
         real(dp) :: v(3) ! v = (x-α*e_1) / ||x-α*e_1||
         real(dp) :: P(3,3) ! Householder Px = α*e_1
-        integer :: m
+        integer :: i, m
         m = size(A,1)
         ! Reflection vector v; x = p(A)e_1
         if (lead) then
@@ -103,17 +97,6 @@ module francis
         ! Create the bulge
         A(1:3,:) = matmul(P, A(1:3,:))
         A(:,1:3) = matmul(A(:,1:3), P)
-    end subroutine
-
-    ! Chase the bulge
-    subroutine chase(A)
-        implicit none
-        real(dp), intent(inout) :: A(:,:)
-        real(dp) :: P(3,3) ! Householder Px = α*e_1
-        real(dp) :: v(3) ! v = (x-α*e_1) / ||x-α*e_1||
-        real(dp) :: vnorm
-        integer :: m, i
-        m = size(A,1)
         ! Eliminate the bulge at i-th column
         do i = 1, m-3 
             v = A(i+1:i+3,i)
@@ -141,7 +124,4 @@ module francis
         A(m-1:,:) = matmul(P(:2,:2), A(m-1:,:))
         A(:,m-1:) = matmul(A(:,m-1:), P(:2,:2))
     end subroutine
-
-    ! subroutine francis_complex128()
-    ! end subroutine
 end module
