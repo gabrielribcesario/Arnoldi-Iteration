@@ -16,9 +16,8 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/data")
 
 # ---Build executables-----------------------------------------------------------
 
-add_library(Eig SHARED src/arnoldi.f90 src/francis.f90)
-target_compile_options(Eig PRIVATE -O2 -shared -fPIC)
+add_library(Ritz SHARED src/arnoldi.f90 src/francis.f90)
+target_compile_options(Ritz PRIVATE -O3 -shared -fPIC)
 
-add_executable(ritz src/ritz.f90)
-target_compile_options(ritz PRIVATE -O2)
-target_link_libraries(ritz Eig)
+add_executable(eig src/eig.f90)
+target_link_libraries(eig Ritz)
