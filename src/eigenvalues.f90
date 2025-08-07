@@ -1,17 +1,17 @@
-program eig
+program eigenvalues
     use, intrinsic :: iso_fortran_env, dp=>real64
     use arnoldi
     use francis
     implicit none
 
-    integer, parameter :: file1 = 21
+    integer, parameter :: file1 = 42
     real(dp), parameter :: pi = 3.14159265358979323846_dp
-    real(dp), parameter :: radius = 10._dp ! Generate eigenvalues inside a circle of radius r
+    real(dp), parameter :: radius = 1._dp ! Generate eigenvalues inside a circle of radius r
     real(dp) :: x1, y1
     integer :: i, recl
     integer :: tic, toc, clock_rate, clock_max
     ! Matrices
-    integer, parameter :: m = 3000, n = min(m, 1000) ! rank(A), dim[K_n(A,b)]
+    integer, parameter :: m = 400, n = min(m, 400) ! rank(A), dim[K_n(A,b)]
     real(dp) :: A(m,m) ! Input matrix
     real(dp) :: Q(m,m+1), H(m+1,m) ! For generating random matrices
     real(dp) :: b(m) ! Input vector
@@ -36,7 +36,7 @@ program eig
     ! Get system clock info
     call system_clock(count_rate=clock_rate, count_max=clock_max)
 
-    print *, "Creating random matrix A with known eigenvalues..."
+    write(*, '(A)') "Creating random matrix A with known eigenvalues..."
 
     ! Compute a random orthogonal basis Q
     call random_number(A)
@@ -54,7 +54,8 @@ program eig
         eval(i+1) = conjg(eval(i))
         A(i:i+1,i:i+1) = reshape([ eval(i)%re, -eval(i)%im, eval(i)%im, eval(i)%re ], [2,2])
     end do
-    if (mod(m, 2) /= 0) then ! Fill the last 1x1 block if m is odd
+    ! Fill the last 1x1 block if m is odd
+    if (mod(m, 2) /= 0) then 
         call random_number(A(m,m))
         A(m,m) = 2._dp * (A(m,m) - 0.5_dp)
     end if
@@ -67,30 +68,33 @@ program eig
     b = [1._dp, (0._dp, i = 1, m-1)]
 
     ! Run eigenvalue calculation routine
-    print *, "Running the algorithm..."
+    write(*, '(A)') "Running the algorithm..."
     call system_clock(count=tic)
     call arnoldi_iteration(m, n, A, b, Q_hat, H_hat)
     call francis_algorithm(H_hat(:n,:), ritz)
     call system_clock(count=toc)
-    print *, "|   Time spent: ", real(toc - tic, dp) / real(clock_rate, dp), "[s]"
+    write(*, '(A,G0.6,A)') "|   Time spent: ", real(toc - tic, dp) / real(clock_rate, dp), "[s]"
 
-    print *, "Writing input matrix A to a binary file..."
+    ! Write the matrix A to a binary file
+    write(*, '(A)') "Writing the input matrix A to a binary file..."
     inquire(iolength=recl) A(:,1)
-    open(file1, file="data/A.bin", form="unformatted", status="replace", access='direct', action="write", recl=recl)
+    open(file1, file="data/A.bin", form="unformatted", status="replace", access="direct", action="write", recl=recl)
     do concurrent (i = 1 : m); write(file1, rec=i) A(:, i); end do
     close(file1)
 
     ! Write the solution to text file
-    print *, "Writing the eigenvalues of A to a text file..."
+    write(*, '(A)') "Writing the eigenvalues of A to a text file..."
     open(file1, file="data/eval.dat", status="replace", action="write")
+    write(file1, '(A)') "Re,Im"
     write(file1, '(SP,ES20.12E3,",",ES20.12E3)') (eval(i), i = 1, m)
     close(file1)
 
     ! Write the results to text file
-    print *, "Writing the ritz values of A to a text file..."
+    write(*, '(A)') "Writing the ritz values of A to a text file..."
     open(file1, file="data/ritz.dat", status="replace", action="write")
+    write(file1, '(A)') "Re,Im"
     write(file1, '(SP,ES20.12E3,",",ES20.12E3)') (ritz(i), i = 1, n)
     close(file1)
 
-    print *, "Done."
+    write(*, '(A)') "Done."
 end program

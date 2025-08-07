@@ -26,18 +26,25 @@ module arnoldi
         real(dp), intent(out) :: Q_hat(m,n+1), H_hat(n+1,n)
         real(dp) :: q_ip1(m)
         integer :: i, j
+
         Q_hat(:,1) = b / norm2(b)
         Q_hat(:,2:) = 0._dp; H_hat = 0._dp
         do i = 1, n
-            q_ip1 = matmul(A, Q_hat(:,i)) ! q_i+1 = A^(i)b
-            do j = 1, i ! Orthogonalization
+            ! q_i+1 = A^(i)b
+            q_ip1 = matmul(A, Q_hat(:,i)) 
+
+            ! Orthogonalization
+            do j = 1, i 
                 H_hat(j,i) = dot_product(Q_hat(:, j), q_ip1)
                 q_ip1 = q_ip1 - H_hat(j,i) * Q_hat(:, j)
             end do
+
             ! h_(i+1)i = ||q_(i+1)||
             H_hat(i+1,i) = norm2(q_ip1) 
+
             ! Early breakdown: q_ip1 is the zero vector
             if (H_hat(i+1,i) < tol) return 
+
             ! Normalization
             Q_hat(:,i+1) = q_ip1 / H_hat(i+1,i)
         end do
@@ -50,18 +57,25 @@ module arnoldi
         complex(dp), intent(out) :: Q_hat(m,n+1), H_hat(n+1,n)
         complex(dp) :: q_ip1(m)
         integer :: i, j
+
         Q_hat(:,1) = b / sqrt(sum(conjg(b) * b))
         Q_hat(:,2:) = 0._dp; H_hat = 0._dp
         do i = 1, n
-            q_ip1 = matmul(A, Q_hat(:,i)) ! q_i+1 = A^(i)b
-            do j = 1, i ! Orthogonalization
+            ! q_i+1 = A^(i)b
+            q_ip1 = matmul(A, Q_hat(:,i)) 
+
+            ! Orthogonalization
+            do j = 1, i 
                 H_hat(j,i) = dot_product(Q_hat(:,j), q_ip1)
                 q_ip1 = q_ip1 - H_hat(j,i) * Q_hat(:,j)
             end do
+
             ! h_(i+1)i = ||q_(i+1)||
             H_hat(i+1,i) = sqrt(sum(conjg(q_ip1) * q_ip1))
+
             ! Early breakdown: q_ip1 is the zero vector
             if (H_hat(i+1,i)%re < tol) return
+
             ! Normalization
             Q_hat(:,i+1) = q_ip1 / H_hat(i+1,i)
         end do

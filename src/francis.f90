@@ -2,7 +2,7 @@ module francis
     use, intrinsic :: iso_fortran_env, dp=>real64
     implicit none
     real(dp), parameter :: eps = epsilon(1._dp)
-    integer, parameter :: maxiter = 20 ! # of iter for exceptional shift
+    integer, parameter :: maxiter = 20 ! # of iter until exceptional shift
 
     private
     public :: francis_algorithm
@@ -15,12 +15,14 @@ module francis
         real(dp) :: trA, detA
         integer :: i, idx, x1, y1
         logical :: stagnant
+
         i = 0; x1 = 1; y1 = size(A,1)
         do while(y1-x1 > 1)
             ! Check subdiagonal
             do idx = y1-1, x1, -1
                 if (abs(A(idx+1,idx)) < eps*(abs(A(idx,idx)) + abs(A(idx+1,idx+1)))) exit
             end do
+
             ! Bulge chasing, disturb the matrix if stagnant
             if (idx < x1) then
                 stagnant = i == maxiter
@@ -77,6 +79,7 @@ module francis
         real(dp) :: v(3) ! v = (x-α*e_1) / ||x-α*e_1||
         real(dp) :: P(3,3) ! Householder Px = α*e_1
         integer :: i, m
+
         m = size(A,1)
         ! Reflection vector v; x = p(A)e_1
         if (lead) then
@@ -90,13 +93,16 @@ module francis
         vnorm = norm2(v)
         if (vnorm == 0._dp) return 
         v = v / vnorm
+
         ! P = I - vv*
         P = reshape([ 1._dp - 2._dp * v(1)**2, -2._dp * v(1) * v(2),      -2._dp * v(1) * v(3),  &
                      -2._dp * v(1) * v(2),      1._dp - 2._dp * v(2)**2,  -2._dp * v(2) * v(3),  &
                      -2._dp * v(1) * v(3),     -2._dp * v(2) * v(3),       1._dp - 2._dp * v(3)**2 ], [3,3])
+
         ! Create the bulge
         A(1:3,:) = matmul(P, A(1:3,:))
         A(:,1:3) = matmul(A(:,1:3), P)
+
         ! Eliminate the bulge at i-th column
         do i = 1, m-3 
             v = A(i+1:i+3,i)
@@ -108,10 +114,12 @@ module francis
             P = reshape([ 1._dp - 2._dp * v(1)**2, -2._dp * v(1) * v(2),     -2._dp * v(1) * v(3),  &
                          -2._dp * v(1) * v(2),      1._dp - 2._dp * v(2)**2, -2._dp * v(2) * v(3),  &
                          -2._dp * v(1) * v(3),     -2._dp * v(2) * v(3),      1._dp - 2._dp * v(3)**2 ], [3,3])
+
             ! Skip the identity blocks, work on active region only
             A(i+1:i+3,:) = matmul(P, A(i+1:i+3,:))
             A(:,i+1:i+3) = matmul(A(:,i+1:i+3), P)
         end do
+
         ! Last reflection is over a (2 x 1) vector
         v(:2) = A(m-1:,m-2)
         v(1) = v(1) + sign(1._dp, v(1)) * norm2(v(:2))
@@ -120,6 +128,7 @@ module francis
         v(:2) = v(:2) / vnorm
         P(:2,:2) = reshape([ 1._dp - 2._dp * v(1)**2, -2._dp * v(1) * v(2), &
                             -2._dp * v(1) * v(2),      1._dp - 2._dp * v(2)**2 ], [2,2])
+
         ! Eliminate bulge
         A(m-1:,:) = matmul(P(:2,:2), A(m-1:,:))
         A(:,m-1:) = matmul(A(:,m-1:), P(:2,:2))
