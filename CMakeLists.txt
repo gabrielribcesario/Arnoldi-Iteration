@@ -21,3 +21,6 @@ target_compile_options(Ritz PRIVATE -O3 -shared -fPIC)
 
 add_executable(eig src/eig.f90)
 target_link_libraries(eig Ritz)
+
+add_executable(convergence src/convergence.f90)
+target_link_libraries(convergence Ritz)
