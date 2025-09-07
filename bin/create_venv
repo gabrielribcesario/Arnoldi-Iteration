@@ -1,0 +1,56 @@
+#!/bin/bash
+
+script_cleanup() {
+    popd > /dev/null
+    trap - INT TERM
+}
+
+trap script_cleanup INT TERM
+
+pushd . > /dev/null
+
+# cd to one level above the script's dir
+cd "$(dirname "${BASH_SOURCE[0]}")"/..
+
+### Creates the Python virtual environment and downloads the compiler ###
+
+# Parse venv name from environment.yml
+VENVNAME="$(head -n 1 environment.yml)"
+if [ $? -ne 0 ]; then 
+    echo "Could not parse the environment name from environment.yml." >&2
+    return 1
+fi
+VENVNAME=${VENVNAME//"name: "/}
+
+# Check if venv is already activated
+if [ "$CONDA_DEFAULT_ENV" != "$VENVNAME" ]; then
+    # Activate the conda base env
+    CONDA_DIR="$(conda info --base)"
+    source "$CONDA_DIR"/etc/profile.d/conda.sh
+    if [ $? -ne 0 ]; then
+        echo "'conda' command failed. Please ensure conda has been added to PATH and that 'conda init' has been run." >&2
+        return 1
+    fi
+
+    # Check if venv exists
+    if [ ! -d "$CONDA_DIR/envs/$VENVNAME" ]; then 
+        # Create the environment from the file
+        conda env create --file=environment.yml -n "$VENVNAME"
+        if [ $? -ne 0 ]; then
+            echo "conda env create failed: could not create venv named '$VENVNAME'" >&2
+            return 1
+        fi
+    fi
+
+    # Source the environment
+    conda activate "$VENVNAME"
+    if [ $? -ne 0 ]; then
+        echo "conda activate failed: could not activate '$VENVNAME'" >&2
+        return 1
+    fi
+fi
+
+script_cleanup
+unset script_cleanup
+
+return 0
