@@ -1,4 +1,4 @@
-program eigenvalues
+program clock
     use, intrinsic :: iso_fortran_env, dp=>real64
     use random
     use arnoldi
@@ -26,7 +26,7 @@ program eigenvalues
     type(random_matrix) :: rng
 
     ! Create the output directory
-    call system("mkdir -p data/eigenvalues")
+    call system("mkdir -p data/clock")
 
     ! Get system clock info
     call system_clock(count_rate=clock_rate, count_max=clock_max)
@@ -54,7 +54,7 @@ program eigenvalues
     ! Write the matrix A to a binary file
     write(*, '(A)') "|   the input matrix A to a .bin file..."
     inquire(iolength=recl) A(:,1)
-    open(file1, file="data/eigenvalues/A.bin", form="unformatted", status="replace", access="direct", action="write", recl=recl)
+    open(file1, file="data/clock/A.bin", form="unformatted", status="replace", access="direct", action="write", recl=recl)
     do concurrent (i = 1 : m)
         write(file1, rec=i) A(:, i)
     end do
@@ -62,14 +62,14 @@ program eigenvalues
 
     ! Write the solution to text file
     write(*, '(A)') "|   the eigenvalues of A to a .csv file..."
-    open(file1, file="data/eigenvalues/eval.csv", status="replace", action="write")
+    open(file1, file="data/clock/eval.csv", status="replace", action="write")
     write(file1, '(A)') "Re,Im"
     write(file1, '(SP,ES20.12E3,",",ES20.12E3)') (eval(i), i = 1, m)
     close(file1)
 
     ! Write the results to text file
     write(*, '(A)') "|   the Ritz values of A to a .csv file..."
-    open(file1, file="data/eigenvalues/ritz.csv", status="replace", action="write")
+    open(file1, file="data/clock/ritz.csv", status="replace", action="write")
     write(file1, '(A)') "Re,Im"
     write(file1, '(SP,ES20.12E3,",",ES20.12E3)') (ritz(i), i = 1, n)
     close(file1)

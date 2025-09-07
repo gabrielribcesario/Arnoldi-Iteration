@@ -11,8 +11,8 @@ target_compile_options(Random PRIVATE -shared -fPIC)
 
 # ---Build executables-----------------------------------------------------------
 
-add_executable(eigenvalues src/eigenvalues.f90)
-target_link_libraries(eigenvalues PRIVATE Ritz Random)
+add_executable(clock src/clock.f90)
+target_link_libraries(clock PRIVATE Ritz Random)
 
 add_executable(convergence src/convergence.f90)
 target_link_libraries(convergence PRIVATE Ritz Random)

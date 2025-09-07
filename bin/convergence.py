@@ -22,32 +22,74 @@ history = np.fromfile(f"{input_prefix}/history.bin", dtype=np.complex128).reshap
 # Zero-pad string
 zpad = int(np.log10(nelem)) + 1 
 
-title_str = "Eigenvalues vs Ritz values\nArnoldi Iteration #{:0{}}\n|λ|~U(0,1)"
+title_str = "Eigenvalue Approximation\nArnoldi Iteration #{:0{}}\n|λ|~U(0,1)"
 
 # Plot approximation steps
-fig, ax = plt.subplots(figsize=(8,8))
+
+fig, axes = plt.subplots(1, 2, figsize=(16,8))
 figtitle = fig.suptitle(title_str.format(nelem, zpad))
-ax.grid(True)
-ax.set_axisbelow(True)
+
+ax1 = axes[0]
+ax1.grid(True)
+ax1.set_axisbelow(True)
+ax1.set_aspect("equal")
+
 # ax lim
-ax.set_xlim(left=-1.1, right=1.1)
-ax.set_ylim(bottom=-1.1, top=1.1)
+ax1.set_xlim(left=-1.1, right=1.1)
+ax1.set_ylim(bottom=-1.1, top=1.1)
 circle = patches.Circle((0., 0.), radius=1., color="k", fill=False)
-ax.add_patch(circle)
+ax1.add_patch(circle)
+
 # label
-ax.set_xlabel("Re(λ)")
-ax.set_ylabel("Im(λ)")
+ax1.set_xlabel("Re(λ)")
+ax1.set_ylabel("Im(λ)")
+
 # evals
-ax.scatter(df_sol.Re, df_sol.Im, label="Eigenvalues", c="k", s=10.)
-ritz_scatter = ax.scatter(history[-1].real, history[-1].imag, label="Ritz values", c="r", s=10.)
-fig.legend(loc="upper right")
+ax1.scatter(df_sol.Re, df_sol.Im, label="Eigenvalues", c="k", s=10.)
+ritz_scatter = ax1.scatter(history[-1].real, history[-1].imag, label="Ritz values", c="r", s=10.)
+ax1.legend(loc="upper right")
+
+# Mean and max residual norm plots
+
+ax2 = axes[1]
+ax2.grid(True)
+ax2.set_axisbelow(True)
+
+t = np.arange(1, nelem + 1)
+# Sort first on norm and then on imaginary component
+idx1 = np.lexsort((df_sol.Im.values, -np.sqrt( df_sol.Re.values**2 + df_sol.Im.values**2 )))
+
+max_residual_norm = []
+mean_residual_norm = []
+for i, iter in enumerate(history):
+    iter = iter.copy()[:i+1]
+    # Sort first on norm and then on imaginary component
+    idx2 = np.lexsort((iter.imag, -np.abs(iter)))
+    # Residual norm of the largest eigenvalues
+    residual_norm = np.sqrt( (iter[idx2].real - df_sol.Re.values[idx1][:iter.size])**2 +
+                             (iter[idx2].imag - df_sol.Im.values[idx1][:iter.size])**2 )
+    max_residual_norm.append(np.max(residual_norm))
+    mean_residual_norm.append(np.mean(residual_norm))
+
+# ax label
+ax2.set_xlabel("Iteration")
+ax2.set_ylabel("Residual norm")
+
+# Plots
+max_norm_plot, = ax2.plot(t, max_residual_norm, label="Maximum residual norm", c="k")
+mean_norm_plot, = ax2.plot(t, mean_residual_norm, label="Mean residual norm", c="r")
+ax2.legend(loc="upper right")
+
 fig.tight_layout()
 
 def update_frame(frame):
     figtitle.set_text(title_str.format(frame+1, zpad))
     slice_i = history[frame][:frame+1]
     ritz_scatter.set_offsets(np.c_[slice_i.real, slice_i.imag])
-    return figtitle, ritz_scatter
+    max_norm_plot.set_data(t[:frame+1], max_residual_norm[:frame+1])
+    mean_norm_plot.set_data(t[:frame+1], mean_residual_norm[:frame+1])
+    return figtitle, ritz_scatter, max_norm_plot, mean_norm_plot
+
 
 fps = 30
 repeat_delay = 500 # [ms]

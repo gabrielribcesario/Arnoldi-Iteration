@@ -16,7 +16,7 @@ module francis
         implicit none
         real(dp), intent(inout) :: A(:,:) ! Upper Hessenberg matrix
         complex(dp), intent(out) :: evals(:) ! Output eigenvalues
-        real(dp) :: trA, detA
+        real(dp) :: trA, detA, delta
         integer :: i, idx, x1, y1
         logical :: stagnant
 
@@ -42,8 +42,15 @@ module francis
             else if (idx == y1-2) then 
                 trA = A(y1-1,y1-1) + A(y1,y1)
                 detA = A(y1-1,y1-1)*A(y1,y1) - A(y1-1,y1)*A(y1,y1-1)
-                evals(y1-1) = (trA + sign(1._dp, trA) * sqrt(complex(trA**2 - 4._dp * detA, 0._dp))) * 0.5_dp
-                evals(y1) = detA / evals(y1-1)
+                delta = trA**2 - 4._dp * detA
+                evals(y1-1) = (trA + sign(1._dp, trA)*sqrt(complex(delta, 0._dp)))*0.5_dp
+                if (delta < 0._dp) then
+                    evals(y1) = conjg(evals(y1-1))
+                else if (delta > 0._dp) then
+                    evals(y1) = detA / evals(y1-1)
+                else
+                    evals(y1) = evals(y1-1)
+                endif
                 y1 = y1 - 2
             ! Check convergence of leading 1x1
             else if (idx == x1) then
@@ -53,8 +60,15 @@ module francis
             else if (idx == x1+1) then
                 trA = A(x1,x1) + A(x1+1,x1+1)
                 detA = A(x1,x1)*A(x1+1,x1+1) - A(x1,x1+1)*A(x1+1,x1)
-                evals(x1) = (trA + sign(1._dp, trA) * sqrt(complex(trA**2 - 4._dp * detA, 0._dp))) * 0.5_dp
-                evals(x1+1) = detA / evals(x1)
+                delta = trA**2 - 4._dp * detA
+                evals(x1) = (trA + sign(1._dp, trA)*sqrt(complex(delta, 0._dp)))*0.5_dp
+                if (delta < 0._dp) then
+                    evals(x1+1) = conjg(evals(x1))
+                else if (delta > 0._dp) then
+                    evals(x1+1) = detA / evals(x1)
+                else
+                    evals(x1+1) = evals(x1)
+                endif
                 x1 = x1 + 2
             ! Solve blocks separately
             else
@@ -63,13 +77,22 @@ module francis
                 return
             end if
         end do
-        if (x1 == y1) then
+
+        ! Evaluate the last block
+        if (x1 == y1) then ! if 1x1
             evals(x1) = complex(A(x1,x1), 0._dp)
-        else
+        else ! if 2x2
             trA = A(x1,x1) + A(y1,y1)
             detA = A(x1,x1)*A(y1,y1) - A(x1,y1)*A(y1,x1)
-            evals(x1) = (trA + sign(1._dp, trA) * sqrt(complex(trA**2 - 4._dp * detA, 0._dp))) * 0.5_dp
-            evals(y1) = detA / evals(x1)
+            delta = trA**2 - 4._dp * detA
+            evals(x1) = (trA + sign(1._dp, trA) * sqrt(complex(delta, 0._dp))) * 0.5_dp
+            if (delta < 0._dp) then
+                evals(y1) = conjg(evals(x1))
+            else if (delta > 0._dp) then
+                evals(y1) = detA / evals(x1)
+            else
+                evals(y1) = evals(x1)
+            endif
         endif
     end subroutine
 
@@ -109,12 +132,14 @@ module francis
 
         ! Eliminate the bulge at i-th column
         do i = 1, m-3 
-            v = A(i+1:i+3,i)
-            ! P = I - vv*, v = (x - α*e_1) / ||x - α*e_1||
+            ! v = (x - α*e_1) / ||x - α*e_1||
+            v = A(i+1:i+3,i) ! x
             v(1) = v(1) + sign(1._dp, v(1)) * norm2(v)
             vnorm = norm2(v)
             if (vnorm == 0._dp) cycle
             v = v / vnorm
+    
+            ! P = I - vv*
             P = reshape([ 1._dp - 2._dp * v(1)**2, -2._dp * v(1) * v(2),     -2._dp * v(1) * v(3),  &
                          -2._dp * v(1) * v(2),      1._dp - 2._dp * v(2)**2, -2._dp * v(2) * v(3),  &
                          -2._dp * v(1) * v(3),     -2._dp * v(2) * v(3),      1._dp - 2._dp * v(3)**2 ], [3,3])
@@ -133,7 +158,7 @@ module francis
         P(:2,:2) = reshape([ 1._dp - 2._dp * v(1)**2, -2._dp * v(1) * v(2), &
                             -2._dp * v(1) * v(2),      1._dp - 2._dp * v(2)**2 ], [2,2])
 
-        ! Eliminate bulge
+        ! Eliminate the bulge
         A(m-1:,:) = matmul(P(:2,:2), A(m-1:,:))
         A(:,m-1:) = matmul(A(:,m-1:), P(:2,:2))
     end subroutine

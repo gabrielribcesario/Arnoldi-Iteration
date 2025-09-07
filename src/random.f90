@@ -7,6 +7,7 @@ module random
     type, public :: random_matrix
         real(dp), private :: radius = 1.0_dp ! Magnitude of the generated eigenvalues
         integer, allocatable, private :: seed(:)
+
         contains
         procedure :: set_radius
         procedure, private :: set_seed_int
@@ -75,13 +76,13 @@ module random
         complex(dp), intent(inout) :: evals(m)
         real(dp) :: Q(m,m+1), H(m+1,m)
         real(dp) :: b(m)
-        real(dp) :: x1, y1 ! pair (radius, angle) of a complex number
+        real(dp) :: x1, y1 ! (radius, angle) of a complex number
         integer :: i
 
         ! Compute a random orthogonal basis Q
         call random_number(A)
         call random_number(b)
-        A = 2._dp * (A - 0.5_dp) ! X~U(-1, 1)
+        A = 2._dp * (A - 0.5_dp) ! A_ij~U(-1, 1)
         call arnoldi_iteration(m, m, A, b, Q, H)
 
         ! Create a block diagonal matrix
@@ -95,13 +96,14 @@ module random
             A(i:i+1,i:i+1) = reshape([ evals(i)%re, -evals(i)%im, &
                                        evals(i)%im,  evals(i)%re ], [2,2])
         end do
+
         ! Fill the last 1x1 block if m is odd
         if (mod(m, 2) /= 0) then 
             call random_number(A(m,m))
             A(m,m) = 2._dp * (A(m,m) - 0.5_dp)
         end if
 
-        ! A now has known eigenvalues
+        ! A := PDP^-1, A has known eigenvalues
         A = matmul(transpose(Q(:,:m)), A)
         A = matmul(A, Q(:,:m))
     end subroutine
