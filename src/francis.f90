@@ -1,11 +1,15 @@
 module francis
     use, intrinsic :: iso_fortran_env, dp=>real64
     implicit none
-    real(dp), parameter :: eps = epsilon(1._dp)
-    integer, parameter :: maxiter = 20 ! # of iter until exceptional shift
 
     private
     public :: francis_algorithm
+
+    ! Machine epsilon
+    real(dp), parameter :: eps = epsilon(1._dp)
+
+    ! Number of iterations before an exceptional shift occurs
+    integer, parameter :: maxiter = 20 
 
     contains
     recursive subroutine francis_algorithm(A, evals)

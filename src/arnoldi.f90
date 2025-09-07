@@ -1,6 +1,11 @@
 module arnoldi
     use, intrinsic :: iso_fortran_env, dp=>real64
     implicit none
+
+    private
+    public :: arnoldi_iteration
+
+    ! Breakdown tolerance
     real(dp), parameter :: tol = 1.e-12_dp
 
     ! m - rank(A)
@@ -10,13 +15,9 @@ module arnoldi
     ! H_hat - Extended Hessenberg matrix or H_{n}
     !
     ! Such that: A.Q_{n} = Q_{n+1}.H_{n}
-
     interface arnoldi_iteration
         module procedure iteration_real64, iteration_complex128
     end interface
-
-    private
-    public :: arnoldi_iteration
 
     contains
     subroutine iteration_real64(m, n, A, b, Q_hat, H_hat)

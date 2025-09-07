@@ -10,12 +10,14 @@ os.system("mkdir -p figures")
 
 plt.rcParams['font.family'] = 'serif' 
 
+input_prefix = "build/data/convergence"
+
 # Eigenvalues of A
-df_sol = pd.read_csv("build/data/eval.dat")
+df_sol = pd.read_csv(f"{input_prefix}/eval.csv")
 nelem = len(df_sol)
 
 # History of the Ritz values of A during the Arnoldi Iteration
-history = np.fromfile("build/data/history.bin", dtype=np.complex128).reshape(nelem, nelem)
+history = np.fromfile(f"{input_prefix}/history.bin", dtype=np.complex128).reshape(nelem, nelem)
 
 # Zero-pad string
 zpad = int(np.log10(nelem)) + 1 
@@ -47,7 +49,7 @@ def update_frame(frame):
     ritz_scatter.set_offsets(np.c_[slice_i.real, slice_i.imag])
     return figtitle, ritz_scatter
 
-fps = 50
+fps = 30
 repeat_delay = 500 # [ms]
 extra_args = ["-final_delay", f"{repeat_delay/10}", "-loop", "0"]
 

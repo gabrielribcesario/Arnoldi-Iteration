@@ -1,47 +1,41 @@
 program convergence
     use, intrinsic :: iso_fortran_env, dp=>real64
+    use random
     use arnoldi
     use francis
     implicit none
 
+    character(len=*), parameter :: esc = achar(27)
+    character(len=*), parameter :: c_red = esc // '[31m'
+    character(len=*), parameter :: c_reset = esc // '[0m'
     integer, parameter :: file1 = 42
     integer :: i, j, recl
+
     ! Matrices
-    integer :: m ! rank(A)
-    real(dp), allocatable :: A(:,:) ! Input matrix
-    real(dp), allocatable :: Q(:,:), H(:,:) ! Orthogonal and Hessenberg
-    real(dp), allocatable :: H_m(:,:) ! Hessenberg at each step of the Arnoldi Iteration
+    integer, parameter :: m = 400 ! rank(A)
+    real(dp) :: A(m,m) ! Input matrix
+    real(dp) :: b(m) ! Input vector
+    real(dp) :: Q(m,m+1) ! Orthonormal basis
+    real(dp) :: H(m+1,m) ! Hessenberg matrix
+    real(dp) :: H_tmp(m+1,m)
+
     ! Eigenvalues
-    complex(dp), allocatable :: eval(:) ! Solution eigenvalues
-    complex(dp), allocatable :: ritz(:) ! Output eigenvalues
+    complex(dp) :: eval(m) ! Solution eigenvalues
+    complex(dp) :: ritz(m) ! Output eigenvalues
 
-    ! Create output dir
-    call system("mkdir -p figures")
+    type(random_matrix) :: rng
 
-    ! Get binary file dims
-    inquire(file="data/A.bin", size=recl)
-    m = int(sqrt(real(recl / dp, dp))) ! Since A is square
-    recl = recl / m
+    ! Create the output directory
+    call system("mkdir -p data/convergence")
 
-    allocate(A(m,m))
-    allocate(Q(m,m+1))
-    allocate(H(m+1,m))
-    allocate(H_m(m+1,m))
-    allocate(eval(m))
-    allocate(ritz(m))
+    ! Random seed initialization
+    call rng%set_seed(42)
 
-    write(*, '(A)') "Reading stored matrix A..."
-    open(file1, file="data/A.bin", form="unformatted", access="direct", action="read", recl=recl)
-    do concurrent (i = 1 : m); read(file1, rec=i) A(:, i); end do
-    close(file1)
+    ! Matrix A and its eigenvalues
+    call rng%get_matrix(m, A, eval)
 
-    write(*, '(A)') "Reading the eigenvalues of matrix A..."
-    open(file1, file="data/eval.dat", action="read")
-    read(file1, fmt=*) ! Header
-    read(file1, fmt=*) (eval(i)%re, eval(i)%im, i = 1, m)
-    close(file1)
-
-    open(file1, file="data/history.bin", form="unformatted", access="direct", status="replace", recl=recl*2)
+    inquire(iolength=recl) A(:,1)
+    open(file1, file="data/convergence/history.bin", form="unformatted", access="direct", status="replace", recl=recl*2)
 
     write(*, '(A)') "Running step-by-step..."
     Q(:,1) = [1._dp, (0._dp, i = 1, m-1)] ! Initial vector b = e_1
@@ -60,8 +54,8 @@ program convergence
         Q(:,i+1) = Q(:,i+1) / H(i+1,i)
 
         ! Calculate the eigenvalues of the (i x i) leading submatrix of H
-        H_m(:i,:i) = H(:i,:i)
-        call francis_algorithm(H_m(:i,:i), ritz(:i))
+        H_tmp(:i,:i) = H(:i,:i)
+        call francis_algorithm(H_tmp(:i,:i), ritz(:i))
         write(file1, rec=i) ritz
     end do arnoldi
 
@@ -69,6 +63,33 @@ program convergence
     call francis_algorithm(H(:m,:), ritz)
     write(file1, rec=m) ritz
     close(file1)
+
+    write(*, '(A)') "Writing..."
+
+    ! Write the matrix A to a binary file
+    write(*, '(A)') "|   the input matrix A to a .bin file..."
+    inquire(iolength=recl) A(:,1)
+    open(file1, file="data/convergence/A.bin", form="unformatted", status="replace", access="direct", action="write", recl=recl)
+    do concurrent (i = 1 : m)
+        write(file1, rec=i) A(:, i)
+    end do
+    close(file1)
+
+    ! Write the solution to text file
+    write(*, '(A)') "|   the eigenvalues of A to a .csv file..."
+    open(file1, file="data/convergence/eval.csv", status="replace", action="write")
+    write(file1, '(A)') "Re,Im"
+    write(file1, '(SP,ES20.12E3,",",ES20.12E3)') (eval(i), i = 1, m)
+    close(file1)
+
+    ! Write the results to text file
+    write(*, '(A)') "|   the Ritz values of A to a .csv file..."
+    open(file1, file="data/convergence/ritz.csv", status="replace", action="write")
+    write(file1, '(A)') "Re,Im"
+    write(file1, '(SP,ES20.12E3,",",ES20.12E3)') (ritz(i), i = 1, m)
+    close(file1)
+    
+    write(*, '(A)') "The history of Ritz values will be stored in history.bin"
 
     write(*, '(A)') "Done."
 end program
