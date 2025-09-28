@@ -9,8 +9,8 @@ trap script_cleanup INT TERM
 
 pushd . > /dev/null
 
-# cd to one level above the script's dir
-cd "$(dirname "${BASH_SOURCE[0]}")"/..
+# cd to the script's dir
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 ARNOLDI_HOME=$(pwd)
 
