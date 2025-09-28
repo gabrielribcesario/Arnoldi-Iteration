@@ -12,6 +12,8 @@ pushd . > /dev/null
 # cd to one level above the script's dir
 cd "$(dirname "${BASH_SOURCE[0]}")"/..
 
+ARNOLDI_HOME=$(pwd)
+
 #------Create and source the env-----------------------------------------
 
 # Parse venv name from environment.yml
@@ -28,7 +30,7 @@ if [ "$CONDA_DEFAULT_ENV" != "$VENVNAME" ]; then
     CONDA_DIR="$(conda info --base)"
     source "$CONDA_DIR"/etc/profile.d/conda.sh
     if [ $? -ne 0 ]; then
-        echo "'conda' command failed. Please ensure conda has been added to PATH and that 'conda init' has been run." >&2
+        echo "'conda' command error: Please ensure conda has been added to PATH and that 'conda init' has been run." >&2
         return 1
     fi
 
@@ -37,7 +39,7 @@ if [ "$CONDA_DEFAULT_ENV" != "$VENVNAME" ]; then
         # Create the environment from the file
         conda env create --file=environment.yml -n "$VENVNAME"
         if [ $? -ne 0 ]; then
-            echo "conda env create failed: could not create venv named '$VENVNAME'" >&2
+            echo "conda env create error: could not create venv named '$VENVNAME'" >&2
             return 1
         fi
     fi
@@ -45,7 +47,7 @@ if [ "$CONDA_DEFAULT_ENV" != "$VENVNAME" ]; then
     # Source the environment
     conda activate "$VENVNAME"
     if [ $? -ne 0 ]; then
-        echo "conda activate failed: could not activate '$VENVNAME'" >&2
+        echo "conda activate error: could not activate '$VENVNAME'" >&2
         return 1
     fi
 fi
@@ -54,17 +56,29 @@ fi
 
 mkdir -p build && cd build
 
-if [ ! -f eigenvalues || ! -f convergence  ]; then
+if [[ ! -d install ]]; then
     cmake ..
     if [ $? -ne 0 ]; then
-        echo "cmake failed: could not run cmake" >&2
+        echo "cmake error: could not run cmake" >&2
         return 1
     fi
-    make
+
+    make install
     if [ $? -ne 0 ]; then
-        echo "make failed: could not run make" >&2
+        echo "make error: could not run make" >&2
         return 1
     fi
+
+    chmod +x "$ARNOLDI_HOME/install/bin/"*
+fi
+
+# Source the local project
+if [[ -z "$ARNOLDI_INSTALL" ]]; then source "$ARNOLDI_HOME/install/setvars.sh"; fi
+if [ $? -ne 0 ]; then
+    echo "LARISA: source error" >&2
+    script_cleanup
+    unset script_cleanup
+    return 1
 fi
 
 script_cleanup

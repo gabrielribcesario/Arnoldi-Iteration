@@ -1,0 +1,5 @@
+export ARNOLDI_INSTALL=@CMAKE_INSTALL_PREFIX@
+export LD_LIBRARY_PATH=$ARNOLDI_INSTALL/@CMAKE_INSTALL_LIBDIR@:$LD_LIBRARY_PATH
+
+# Add the project's bin to path
+if [[ $PATH != *"$ARNOLDI_INSTALL/bin"* ]]; then export PATH=$ARNOLDI_INSTALL/bin:$PATH; fi
