@@ -224,7 +224,6 @@ program convergence
 
     write(*, '(A)') "The history of Ritz values has been written to history.bin"
 
-    write(*, '(A)') "Preparing the graphics presentation, this may take a while..."
     call system("convergence.py -i " // output_dir, sys_status)
     if (sys_status /= 0) then
         write(error_unit, '(A,A)') &

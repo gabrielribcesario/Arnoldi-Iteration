@@ -9,7 +9,7 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser('convergence.py', add_help=False)
     parser.add_argument('-i', '--input', type=str)
-    parser.add_argument('-o', '--output')
+    parser.add_argument('-o', '--output', type=str)
     parser.add_argument('-h', '--help', action='store_true')
     args = parser.parse_args()
 
@@ -19,9 +19,9 @@ def parse_arguments():
             "Uses the output of the 'convergence' executable to animate the convergence of the Ritz values\n" \
             "and compare the approximation with 'n' largest eigenvalues of the matrix A\n\n"
             "Options: \n" \
-            "  -i, --input      Input directory containing the output of the \'convergence\' executable\n" \
-            "  -o, --output     Output directory, defaults to the input directory\n" \
-            "  -h, --help       Display this help message")
+            "  -i, --input <directory>      Input directory containing the output of the \'convergence\' executable\n" \
+            "  -o, --output <directory>     Output directory (default: same as --input)\n" \
+            "  -h, --help                   Display this help message")
         sys.exit(0)
 
     input_prefix = args.input
@@ -45,6 +45,8 @@ if __name__ == "__main__":
     import pandas as pd
     import numpy as np
 
+    print("Preparing the graphics presentation, this may take a while...")
+
     os.system(f"mkdir -p {output_prefix}/figures")
 
     # Eigenvalues of A
@@ -64,7 +66,7 @@ if __name__ == "__main__":
 
     # Plot approximation steps
 
-    fig, axes = plt.subplots(1, 2, figsize=(10,5))
+    fig, axes = plt.subplots(1, 2, figsize=(14,7))
     figtitle = fig.suptitle(title_str.format(nelem, zpad))
 
     ax1 = axes[0]

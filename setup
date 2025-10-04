@@ -54,9 +54,9 @@ fi
 
 #------Build the standalone project--------------------------------------
 
-mkdir -p build && cd build
-
 if [[ ! -d install ]]; then
+    mkdir -p build && cd build
+
     cmake ..
     if [ $? -ne 0 ]; then
         echo "cmake error: could not run cmake" >&2
@@ -75,7 +75,7 @@ fi
 # Source the local project
 if [[ -z "$ARNOLDI_INSTALL" ]]; then source "$ARNOLDI_HOME/install/setvars.sh"; fi
 if [ $? -ne 0 ]; then
-    echo "LARISA: source error" >&2
+    echo "arnoldi: source error" >&2
     script_cleanup
     unset script_cleanup
     return 1
